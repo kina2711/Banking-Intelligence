@@ -1173,3 +1173,35 @@ EXEC KHACHHANG_NHOMNO_CHINHANH '1302004';
 ```
 
 ### **6.3. Tạo TRIGGER khi thêm mới 1 khách hàng sẽ kiểm tra xem số giấy tờ của khách hàng đã có hay chưa, nếu đã có thì thông báo đã có, yêu cầu thêm mới khách hàng khác**
+```sql
+CREATE TRIGGER TRG_CHECK_MA_GIAYTO
+ON KHACHHANG
+INSTEAD OF INSERT
+AS
+BEGIN
+    DECLARE @MaGiayTo NVARCHAR(20),
+            @MaKhachHang NVARCHAR(12),
+            @TenKhachHang NVARCHAR(500);
+
+    -- Lấy thông tin từ bảng inserted (bảng ảo chứa dữ liệu mới)
+    SELECT @MaGiayTo = i.MA_GIAYTO, 
+           @MaKhachHang = i.MA_KHACHHANG,
+           @TenKhachHang = i.TEN_KHACHHANG
+    FROM inserted i;
+
+    -- Kiểm tra xem số giấy tờ đã tồn tại hay chưa
+    IF EXISTS (SELECT 1 FROM KHACHHANG WHERE MA_GIAYTO = @MaGiayTo)
+    BEGIN
+        -- Nếu tồn tại, thông báo lỗi
+        RAISERROR('Số giấy tờ đã tồn tại, vui lòng thêm khách hàng khác.', 16, 1);
+        ROLLBACK TRANSACTION;  -- Hủy giao dịch thêm mới
+    END
+    ELSE
+    BEGIN
+        -- Nếu không tồn tại, thực hiện thêm khách hàng mới
+        INSERT INTO KHACHHANG(MA_CHINHANH, MA_CIC, MA_KHACHHANG, TEN_KHACHHANG, NGAY_MO_TAIKHOAN, NGAY_SINH, MA_GIAYTO, MA_LOAI_KHACHHANG, MA_LOAI_GIAYTO, NGAYCAP_GIAYTO, MA_NOICAP, DIACHI, NGAY_THANHLAP, QUY_MO_DOANHNGHIEP, VON_DIEULE, MA_TAIKHOAN_THANHTOAN, TEN_CHU_DOANHNGHIEP, ID_CHU_DOANHNGHIEP, MA_LOAIHINH_KHACHHANG, MA_NGANHNGHE_KINHTE)
+        SELECT i.MA_CHINHANH, i.MA_CIC, i.MA_KHACHHANG, i.TEN_KHACHHANG, i.NGAY_MO_TAIKHOAN, i.NGAY_SINH, i.MA_GIAYTO, i.MA_LOAI_KHACHHANG, i.MA_LOAI_GIAYTO, i.NGAYCAP_GIAYTO, i.MA_NOICAP, i.DIACHI, i.NGAY_THANHLAP, i.QUY_MO_DOANHNGHIEP, i.VON_DIEULE, i.MA_TAIKHOAN_THANHTOAN, i.TEN_CHU_DOANHNGHIEP, i.ID_CHU_DOANHNGHIEP, i.MA_LOAIHINH_KHACHHANG, i.MA_NGANHNGHE_KINHTE
+        FROM inserted i;
+    END
+END;
+```
